@@ -267,6 +267,7 @@ class ExampleTest extends TestCase
             ->assertOk()
             ->assertSee('Reschedule')
             ->assertSee('Attendance')
+            ->assertSee('Cancel')
             ->assertSee(route('meetings.reschedule.edit', 1), false);
     }
 
@@ -549,7 +550,7 @@ class ExampleTest extends TestCase
         $this->assertNull($attendee->checked_out_at);
 
         $this->actingAs($user)
-            ->delete(route('attendees.destroy', $attendee))
+            ->post(route('attendees.destroy', $attendee))
             ->assertRedirect();
 
         $this->assertDatabaseMissing('attendees', ['id' => $attendee->id]);

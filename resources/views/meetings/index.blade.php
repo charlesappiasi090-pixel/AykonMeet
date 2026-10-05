@@ -4,6 +4,26 @@
 <style>
     .row-action { display: inline-flex; align-items: center; justify-content: center; background: #f7c948; border: 1px solid #f7c948; color: #112b49; padding: 9px 11px; font: 700 11px 'DM Sans', sans-serif; text-decoration: none; white-space: nowrap; }
     .row-action:hover { color: #112b49; opacity: .85; }
+    .meeting-row { display: grid; gap: 6px; padding: 14px 20px; min-height: 0; }
+    .meeting-head { display: flex; align-items: baseline; gap: 12px; }
+    .date-block { display: inline-flex; align-items: baseline; gap: 6px; width: auto; text-align: left; }
+    .meeting-main { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+    .meeting-main strong, .meeting-main span { display: inline; margin-top: 0; }
+    .meeting-main strong { font-weight: 700; }
+    .meeting-main span { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .meeting-time { font-size: 12px; color: var(--muted); padding-left: 50px; font-weight: 600; }
+    .meeting-time small { display: inline; margin-top: 0; color: var(--muted); font-weight: 600; }
+    .meeting-time small::before { content: " · "; }
+    .meeting-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .meeting-meta { display: inline-flex; align-items: center; gap: 10px; }
+    .row-actions { display: flex; align-items: center; gap: 8px; }
+    .row-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-left: auto; padding-left: 14px; border-left: 1px solid #edf1f4; }
+    @media (max-width: 800px) {
+        .meeting-head { flex-wrap: wrap; }
+        .meeting-main span, .meeting-time small { white-space: normal; }
+        .meeting-time { padding-left: 0; }
+        .row-actions { justify-content: flex-start; }
+    }
     .start-row-form { margin: 0; }
     .start-row-button { border: 0; background: #112b49; color: #fff; padding: 9px 11px; font: 700 11px 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; }
     .start-row-button:disabled { opacity: .4; cursor: not-allowed; }
@@ -51,6 +71,6 @@
 
 <dialog class="meeting-dialog schedule-dialog" id="schedule-dialog">
     <div class="schedule-dialog-heading"><section class="section-heading" id="schedule"><div><p class="eyebrow">LIVE SCHEDULE</p><h2>All meetings</h2></div><span class="section-count">{{ $meetings->count() }} records</span></section><button class="dialog-close" type="button" onclick="document.getElementById('schedule-dialog').close()" aria-label="Close schedule">×</button></div>
-    <div class="meeting-table panel">@forelse($meetings as $meeting)<div class="meeting-row"><div class="date-block"><strong>{{ $meeting->start_date->format('d') }}</strong><span>{{ $meeting->start_date->format('M') }}</span></div><div class="meeting-main"><strong>{{ $meeting->meeting_topic }}</strong><span>{{ $meeting->name }} @if($meeting->company_name) · {{ $meeting->company_name }} @endif</span></div><div class="meeting-time">{{ $meeting->start_date->format('H:i') }} – {{ $meeting->end_date->format('H:i') }}<small>{{ $meeting->room?->name ?? 'Room to be assigned' }} · {{ $meeting->attendees_count }} attendees</small></div><span class="status-badge {{ $meeting->status ?? 'scheduled' }}">{{ str_replace('_', ' ', $meeting->status ?? 'scheduled') }}</span><div class="code-pill">{{ $meeting->meeting_code }}</div><a class="row-action" href="{{ route('meetings.attendance', $meeting) }}">Attendance</a><a class="row-action" href="{{ route('meetings.edit', $meeting) }}">Edit</a><a class="row-action" href="{{ route('meetings.reschedule.edit', $meeting) }}">Reschedule</a>@if($meeting->status === 'cancelled')<form method="post" action="{{ route('meetings.reopen', $meeting) }}" class="start-row-form">@csrf<button class="start-row-button" type="submit">Reopen</button></form>@elseif($meeting->status !== 'completed')<form method="post" action="{{ route('meetings.cancel', $meeting) }}" class="start-row-form" onsubmit="return confirm('Cancel this meeting? Attendees will be emailed a cancellation notice.');">@csrf<button class="start-row-button" type="submit" style="background:#c0392b;">Cancel</button></form>@endif</div>@empty<div class="empty-state"><strong>Your schedule is clear.</strong><span>Create a meeting above to generate its access code.</span></div>@endforelse</div>
+    <div class="meeting-table panel">@forelse($meetings as $meeting)<div class="meeting-row"><div class="meeting-head"><div class="date-block"><strong>{{ $meeting->start_date->format('d') }}</strong><span>{{ $meeting->start_date->format('M') }}</span></div><div class="meeting-main"><strong>{{ $meeting->meeting_topic }}</strong><span>{{ $meeting->name }}@if($meeting->company_name) · {{ $meeting->company_name }}@endif</span></div></div><div class="meeting-time">{{ $meeting->start_date->format('H:i') }} – {{ $meeting->end_date->format('H:i') }}<small>{{ $meeting->room?->name ?? 'Room to be assigned' }} · {{ $meeting->attendees_count }} attendees</small></div><div class="meeting-foot"><span class="meeting-meta"><span class="status-badge {{ $meeting->status ?? 'scheduled' }}">{{ str_replace('_', ' ', $meeting->status ?? 'scheduled') }}</span><div class="code-pill">{{ $meeting->meeting_code }}</div></span><div class="row-actions"><a class="row-action" href="{{ route('meetings.attendance', $meeting) }}">Attendance</a><a class="row-action" href="{{ route('meetings.edit', $meeting) }}">Edit</a><a class="row-action" href="{{ route('meetings.reschedule.edit', $meeting) }}">Reschedule</a>@if($meeting->status === 'cancelled')<form method="post" action="{{ route('meetings.reopen', $meeting) }}" class="start-row-form">@csrf<button class="start-row-button" type="submit">Reopen</button></form>@endif</div></div></div></div>@empty<div class="empty-state"><strong>Your schedule is clear.</strong><span>Create a meeting above to generate its access code.</span></div>@endforelse</div>
 </dialog>
 @endsection

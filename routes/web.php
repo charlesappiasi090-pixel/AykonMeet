@@ -49,5 +49,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/meetings/{meeting}/check-in', [MeetingController::class, 'checkIn'])->name('attendees.check-in');
     Route::post('/attendees/{attendee}/undo-check-in', [MeetingController::class, 'undoCheckIn'])->name('attendees.undo-check-in');
     Route::post('/attendees/{attendee}/check-out', [MeetingController::class, 'toggleCheckOut'])->name('attendees.check-out');
-    Route::delete('/attendees/{attendee}', [MeetingController::class, 'destroyAttendee'])->name('attendees.destroy');
+    Route::post('/attendees/{attendee}', [MeetingController::class, 'destroyAttendee'])->name('attendees.destroy');
 });

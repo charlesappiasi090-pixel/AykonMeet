@@ -1,0 +1,394 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Mail\CompanyInvitation;
+use App\Models\CompanyContact;
+use App\Models\Meeting;
+use App\Models\MeetingCompany;
+use App\Models\MeetingRoom;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+
+class MultiCompanyMeetingController extends Controller
+{
+    public function create(): View
+    {
+        $rooms = MeetingRoom::orderBy('name')->get();
+
+        return view('meetings.multi-company.create', [
+            'rooms' => $rooms,
+            'currentStep' => 1,
+            'steps' => [
+                ['id' => 1, 'title' => 'Meeting Details', 'icon' => '📋'],
+                ['id' => 2, 'title' => 'Invite Companies', 'icon' => '🏢'],
+                ['id' => 3, 'title' => 'Permissions & Security', 'icon' => '🔒'],
+                ['id' => 4, 'title' => 'Review & Create', 'icon' => '✅'],
+            ],
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $step = $request->input('step', 1);
+
+        // Validate based on current step
+        $validated = $this->validateStep($request, $step);
+
+        // Store in session for multi-step form
+        $sessionData = $request->session()->get('multi_company_meeting', []);
+        $sessionData = array_merge($sessionData, $validated);
+        $request->session()->put('multi_company_meeting', $sessionData);
+
+        if ($step === 4) {
+            // Final submission - create the meeting
+            return $this->createMeeting($request);
+        }
+
+        return redirect()->route('multi-company-meetings.create', ['step' => $step + 1]);
+    }
+
+    private function validateStep(Request $request, int $step): array
+    {
+        switch ($step) {
+            case 1:
+                return $request->validate([
+                    'meeting_title' => ['required', 'string', 'max:180'],
+                    'description' => ['nullable', 'string', 'max:2000'],
+                    'meeting_type' => ['required', Rule::in(['online', 'hybrid', 'in_person'])],
+                    'category' => ['required', Rule::in(['business_discussion', 'project_review', 'partnership', 'training', 'interview', 'conference', 'other'])],
+                    'meeting_date' => ['required', 'date', 'after_or_equal:today'],
+                    'start_time' => ['required', 'date_format:H:i'],
+                    'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+                    'timezone' => ['required', 'string', 'max:50'],
+                    'host_name' => ['required', 'string', 'max:120'],
+                    'host_company' => ['nullable', 'string', 'max:160'],
+                    'host_email' => ['required', 'email', 'max:160'],
+                    'host_phone' => ['required', 'string', 'max:40'],
+                    'location' => ['nullable', 'string', 'max:255'],
+                    'meeting_room_id' => ['nullable', 'exists:meeting_rooms,id'],
+                    'agenda_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,txt', 'max:10240'],
+                ]);
+
+            case 2:
+                $request->validate([
+                    'companies' => ['required', 'array', 'min:1'],
+                    'companies.*.name' => ['required', 'string', 'max:160'],
+                    'companies.*.email' => ['required', 'email', 'max:160'],
+                    'companies.*.phone' => ['nullable', 'string', 'max:40'],
+                    'companies.*.rep_name' => ['required', 'string', 'max:160'],
+                    'companies.*.rep_email' => ['required', 'email', 'max:160'],
+                    'companies.*.rep_job_title' => ['nullable', 'string', 'max:160'],
+                    'companies.*.rep_department' => ['nullable', 'string', 'max:160'],
+                    'companies.*.expected_participants' => ['nullable', 'integer', 'min:1'],
+                    'companies.*.logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,svg', 'max:2048'],
+                    'companies.*.additional_emails' => ['nullable', 'array'],
+                    'companies.*.additional_emails.*' => ['email'],
+                    'companies.*.agenda' => ['nullable', 'string', 'max:2000'],
+                ]);
+
+                $companyData = $request->only(['companies']);
+                
+                // Handle logo uploads - store files and save paths in session data
+                if ($request->hasFile('companies.*.logo')) {
+                    $companies = $companyData['companies'] ?? [];
+                    foreach ($companies as $index => $companyData) {
+                        $logoKey = "companies.{$index}.logo";
+                        if ($request->hasFile($logoKey)) {
+                            $file = $request->file($logoKey);
+                            if ($file && $file->isValid()) {
+                                $path = $this->storeLogo($file);
+                                $companyData[$index]['logo_path'] = $path;
+                            }
+                        }
+                    }
+                    $companyData['companies'] = $companies;
+                }
+
+                return $companyData;
+
+            case 3:
+                return $request->validate([
+                    'who_can_join' => ['required', Rule::in(['invited_only', 'approved_link'])],
+                    'participant_approval' => ['required', Rule::in(['automatic', 'host_approval'])],
+                    'waiting_room' => ['boolean'],
+                    'mute_on_entry' => ['boolean'],
+                    'allow_screen_share' => ['required', Rule::in(['host_only', 'presenters', 'all_approved'])],
+                    'document_sharing' => ['required', Rule::in(['host_only', 'approved_participants'])],
+                    'chat_permissions' => ['required', Rule::in(['everyone', 'representatives_only', 'host_only'])],
+                    'recording_permission' => ['required', Rule::in(['host', 'authorized_users'])],
+                    'join_before_host' => ['boolean'],
+                    'allow_rejoin' => ['boolean'],
+                    'password' => ['nullable', 'string', 'max:60'],
+                    'company_group_privacy' => ['boolean'],
+                ]);
+
+            case 4:
+                return $request->validate([
+                    'confirm' => ['required', 'accepted'],
+                ]);
+        }
+
+        return [];
+    }
+
+    private function createMeeting(Request $request): RedirectResponse
+    {
+        $data = $request->session()->get('multi_company_meeting', []);
+
+        // Handle logo files stored in session
+        if (isset($data['companies'])) {
+            foreach ($data['companies'] as $index => $companyData) {
+                if (isset($companyData['logo_path'])) {
+                    $data['companies'][$index]['logo_path'] = $companyData['logo_path'];
+                }
+            }
+
+        // Combine date and time
+        $startDate = Carbon::parse($data['meeting_date'].' '.$data['start_time']);
+        $endDate = Carbon::parse($data['meeting_date'].' '.$data['end_time']);
+
+        // Determine meeting type
+        $meetingType = $data['meeting_type'];
+        $isOnline = in_array($data['meeting_type'], ['online', 'hybrid']);
+        $isMultiCompany = $isOnline; // Multi-company only for online/hybrid
+
+        // Create meeting
+        $meeting = Meeting::create([
+            'name' => $data['host_name'],
+            'email' => $data['host_email'],
+            'phone' => $data['host_phone'],
+            'company_name' => $data['host_company'],
+            'meeting_topic' => $data['meeting_title'],
+            'description' => $data['description'],
+            'topic_category' => $data['category'],
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'from_location' => $data['location'] ?? null,
+            'to_location' => null,
+            'meeting_room_id' => $data['meeting_room_id'] ?? null,
+            'status' => 'scheduled',
+            'is_online' => $isOnline,
+            'is_multi_company' => true,
+            'session_provider' => $isOnline ? 'internal' : null,
+            'host_user_id' => auth()->id(),
+            'settings' => array_merge([
+                'password' => $data['password'] ?? null,
+                'waiting_room' => $data['waiting_room'] ?? false,
+                'mute_on_entry' => $data['mute_on_entry'] ?? false,
+                'allow_screen_share' => $data['allow_screen_share'] ?? 'host_only',
+                'allow_chat' => $data['chat_permissions'] ?? 'everyone',
+                'allow_participant_hand' => $data['chat_permissions'] === 'everyone',
+                'allow_recording' => $data['recording_permission'] === 'host',
+                'max_participants' => null,
+                'company_self_invite' => false,
+                'who_can_join' => $data['who_can_join'] ?? 'invited_only',
+                'participant_approval' => $data['participant_approval'] ?? 'automatic',
+                'waiting_room' => $data['waiting_room'] ?? true,
+                'mute_on_entry' => $data['mute_on_entry'] ?? false,
+                'allow_screen_share' => $data['allow_screen_share'] ?? 'host_only',
+                'document_sharing' => $data['document_sharing'] ?? 'host_only',
+                'chat_permissions' => $data['chat_permissions'] ?? 'everyone',
+                'allow_recording' => $data['recording_permission'] === 'host',
+                'join_before_host' => $data['join_before_host'] ?? false,
+                'allow_rejoin' => $data['allow_rejoin'] ?? true,
+                'company_group_privacy' => $data['company_group_privacy'] ?? true,
+            ], $data['settings'] ?? []),
+        ]);
+
+        // Create companies and send invitations
+        $invitationResults = [];
+
+        foreach ($data['companies'] as $index => $companyData) {
+            $company = MeetingCompany::forName($meeting, $companyData['name']);
+
+            $company->update([
+                'email' => $companyData['email'],
+                'phone' => $companyData['phone'] ?? null,
+                'contact_name' => $companyData['rep_name'],
+                'contact_email' => $companyData['rep_email'],
+                'contact_phone' => $companyData['phone'] ?? null,
+                'contact_job_title' => $companyData['rep_job_title'] ?? null,
+                'contact_department' => $companyData['rep_department'] ?? null,
+                'expected_participants' => $companyData['expected_participants'] ?? 0,
+                'company_agenda' => $companyData['agenda'] ?? null,
+                'logo_path' => $companyData['logo_path'] ?? null,
+                'status' => 'pending',
+            ]);
+
+            // Add additional contacts
+            if (! empty($companyData['additional_emails'])) {
+                foreach ($companyData['additional_emails'] as $email) {
+                    CompanyContact::create([
+                        'meeting_company_id' => $company->id,
+                        'name' => '',
+                        'email' => $email,
+                        'is_primary' => false,
+                    ]);
+                }
+            }
+
+            // Add primary representative as contact
+            CompanyContact::create([
+                'meeting_company_id' => $company->id,
+                'name' => $companyData['rep_name'],
+                'email' => $companyData['rep_email'],
+                'phone' => $companyData['phone'] ?? null,
+                'job_title' => $companyData['rep_job_title'] ?? null,
+                'department' => $companyData['rep_department'] ?? null,
+                'is_primary' => true,
+            ]);
+
+            // Issue invitation token and send email
+            $result = $this->issueAndSendCompanyInvitation($meeting, $company);
+
+            $invitationResults[] = [
+                'company' => $company->name,
+                'email' => $companyData['email'],
+                'success' => $result['success'],
+                'error' => $result['error'] ?? null,
+            ];
+        }
+
+        // Generate meeting URL
+        if (in_array($data['meeting_type'], ['online', 'hybrid'])) {
+            $meeting->update([
+                'session_url' => URL::signedRoute('sessions.join', ['meeting' => $meeting]),
+            ]);
+        }
+
+        // Clear session
+        $request->session()->forget('multi_company_meeting');
+
+        // Build success message
+        $message = 'Meeting Created Successfully.';
+        if (! empty($invitationResults)) {
+            $sentCount = collect($invitationResults)->where('success', true)->count();
+            $failedCount = collect($invitationResults)->where('success', false)->count();
+            $message .= " {$sentCount} invitation(s) sent.";
+            if ($failedCount > 0) {
+                $message .= " {$failedCount} failed — check the Invited Companies panel to retry.";
+            }
+        }
+
+        return redirect()
+            ->route('multi-company-meetings.show', $meeting)
+            ->with('success', $message)
+            ->with('invitation_results', $invitationResults);
+    }
+
+    private function storeLogo($file): ?string
+    {
+        if (! $file) {
+            return null;
+        }
+
+        return $file->store('meeting-logos', 'public');
+    }
+
+    private function issueAndSendCompanyInvitation(Meeting $meeting, MeetingCompany $company): array
+    {
+        if ($company->is_host_company) {
+            return ['success' => true];
+        }
+
+        // Issue new invitation token
+        if (blank($company->invitation_token) || $company->invitation_status === 'cancelled') {
+            $company->issueInvitation($meeting->end_date);
+        }
+
+        $company->update([
+            'invitation_delivery_status' => 'pending',
+            'invitation_failure_reason' => null,
+            'invitation_retry_count' => 0,
+        ]);
+
+        if (empty($company->contact_email)) {
+            $company->update([
+                'invitation_delivery_status' => 'failed',
+                'invitation_failure_reason' => 'No contact email provided for this company.',
+            ]);
+
+            return ['success' => false, 'error' => 'No contact email provided for this company.'];
+        }
+
+        try {
+            Mail::to($company->contact_email)->send(new CompanyInvitation($meeting, $company));
+            $company->update([
+                'invitation_delivery_status' => 'sent',
+                'invitation_sent_at' => now(),
+            ]);
+
+            return ['success' => true];
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to email company invitation link to '.$company->contact_email.': '.$exception->getMessage());
+            $company->update([
+                'invitation_delivery_status' => 'failed',
+                'invitation_failure_reason' => $exception->getMessage(),
+                'invitation_retry_count' => $company->invitation_retry_count + 1,
+            ]);
+
+            return ['success' => false, 'error' => $exception->getMessage()];
+        }
+    }
+
+    public function show(Meeting $meeting): View
+    {
+        abort_unless($meeting->is_multi_company, 404);
+
+        $meeting->load([
+            'room',
+            'companies' => fn ($query) => $query
+                ->with(['attendees' => fn ($attendee) => $attendee->orderBy('full_name')->orderBy('id')])
+                ->orderByDesc('is_host_company')
+                ->orderBy('name'),
+            'attendees.meetingCompany',
+        ]);
+
+        $companies = $meeting->companies;
+        $attendees = $meeting->attendees;
+
+        $acceptedParticipants = $attendees->filter(fn (Attendee $attendee) => $attendee->checked_in_at !== null
+            || $attendee->meetingCompany?->status === 'accepted')->count();
+
+        $stats = [
+            'companies' => $companies->count(),
+            'expected' => $attendees->count(),
+            'accepted' => $acceptedParticipants,
+            'status' => $meeting->dashboardStatus(),
+        ];
+
+        $joinUrl = $meeting->joinUrl();
+        $settings = $meeting->sessionSettings();
+
+        return view('meetings.multi-company.show', compact('meeting', 'companies', 'attendees', 'stats', 'joinUrl', 'settings'));
+    }
+
+    public function resendInvitation(Meeting $meeting, MeetingCompany $company)
+    {
+        abort_unless($company->meeting_id === $meeting->id, 404);
+
+        $result = $this->issueAndSendCompanyInvitation($meeting, $company);
+
+        if ($result['success']) {
+            return back()->with('success', 'Invitation resent to '.$company->contact_email.'.');
+        }
+
+        return back()->with('error', 'Failed to resend invitation: '.($result['error'] ?? 'Unknown error'));
+    }
+
+    public function revokeInvitation(Meeting $meeting, MeetingCompany $company)
+    {
+        abort_unless($company->meeting_id === $meeting->id, 404);
+
+        $company->revokeInvitation();
+
+        return back()->with('success', $company->name.' invitation link revoked.');
+    }
+}

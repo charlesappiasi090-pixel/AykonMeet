@@ -54,6 +54,14 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## AykonMeet online sessions
+
+Online rooms use browser WebRTC peer-to-peer connections with Laravel database polling for signaling. Invited participants verify their email with a one-time code before joining; successful verification marks them present. Hybrid meetings support unlimited attendance and show the physical location alongside their generated WebRTC link. Invitees must verify their email to choose online or in-person attendance; they can change that choice until the meeting starts. Organizers see separate online, in-person, and not-responded lists, while public meeting pages expose counts only. The room supports screen sharing, chat, raised hands, host muting, attendee presence, and participant-started recordings. Recordings are mixed in the participant's browser and uploaded to the private local storage disk. Admins can manage recording permissions, invited attendee access, download access, storage usage, and all saved recordings from **Settings → Recording & Storage**. Admins can always download recordings; meeting hosts can download them when enabled in settings. Configure PHP's `upload_max_filesize` and `post_max_size` to allow recordings up to the application's 500 MB upload limit.
+
+Participants can opt in to live speech recognition from a supported browser in the session room. Audio recognition may be processed by the browser vendor's speech service; the app stores recognized text with the speaker and timestamp. Session reports show a transcript-based draft outline, plus keyword-detected possible decisions and action items. These are not AI-generated or verified minutes and should be reviewed. Full AI summarization requires configuring an AI language-model provider.
+
+Run `php artisan migrate` after deploying. Browsers require HTTPS (except localhost) for camera and screen capture. The app uses a public STUN server by default; networks that block direct peer connections require a TURN server, which is not configured here. Peer-to-peer mesh connections are intended for small rooms and use more bandwidth as participants join.
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

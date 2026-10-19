@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Models\Meeting;
+use App\Models\MeetingCompany;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class AttendeeImporter
 {
     public const HEADERS = ['full name', 'email', 'phone'];
+
+    public const OPTIONAL_HEADERS = ['company', 'department'];
 
     public function import(UploadedFile $file, Meeting $meeting): array
     {
@@ -24,6 +27,9 @@ class AttendeeImporter
             return ['created' => 0, 'skipped' => 0, 'attendees' => collect(), 'error' => 'The file must contain Full Name, Email and Phone columns.'];
         }
 
+        $hasCompany = in_array('company', $headers, true);
+        $hasDepartment = in_array('department', $headers, true);
+
         $created = 0;
         $createdAttendees = collect();
         $skipped = 0;
@@ -35,9 +41,12 @@ class AttendeeImporter
             $fullName = trim((string) ($values['full name'] ?? ''));
             $email = trim((string) ($values['email'] ?? ''));
             $phone = trim((string) ($values['phone'] ?? ''));
+            $company = $hasCompany ? trim((string) ($values['company'] ?? '')) : '';
+            $department = $hasDepartment ? trim((string) ($values['department'] ?? '')) : '';
 
-            if ($fullName === '' || $email === '' || $phone === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if ($fullName === '' || $email === '' || $phone === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $skipped++;
+
                 continue;
             }
 
@@ -46,15 +55,21 @@ class AttendeeImporter
                 || $meeting->attendees()->where('email', $email)->exists()
             ) {
                 $skipped++;
+
                 continue;
             }
 
             $usedEmails[$email] = true;
-            $createdAttendees->push($meeting->attendees()->create([
+            $attributes = [
                 'full_name' => $fullName,
                 'email' => $email,
                 'phone' => $phone,
-            ]));
+                'department' => $department !== '' ? $department : null,
+            ];
+            if ($meeting->isMultiCompany() && $company !== '') {
+                $attributes['meeting_company_id'] = MeetingCompany::forName($meeting, $company)->id;
+            }
+            $createdAttendees->push($meeting->attendees()->create($attributes));
             $created++;
         }
 

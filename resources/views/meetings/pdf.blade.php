@@ -21,7 +21,7 @@
     </style>
 </head>
 <body>
-    <p class="code">AYKONMEET / COMPLETED MEETING</p>
+    <p class="code">AYKONMEET / MEETING REPORT</p>
     <h1>{{ $meeting->meeting_topic }}</h1>
     <p class="muted">Meeting code: {{ $meeting->meeting_code }}</p>
 

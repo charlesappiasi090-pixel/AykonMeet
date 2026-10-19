@@ -10,7 +10,7 @@ class MeetingRoom extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'number', 'floor'];
+    protected $fillable = ['name', 'number', 'floor', 'location'];
 
     public function meetings(): HasMany
     {

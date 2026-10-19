@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mail\MeetingCancelled;
 use App\Models\Meeting;
 use App\Models\MeetingRoom;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
@@ -24,7 +27,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         $this->actingAs($user)
             ->post(route('meetings.start', $meeting))
@@ -50,7 +53,7 @@ class ExampleTest extends TestCase
             'started_at' => now()->subMinutes(15),
         ]);
 
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         $this->actingAs($user)
             ->post(route('meetings.end', $meeting))
@@ -77,7 +80,7 @@ class ExampleTest extends TestCase
             'ended_at' => now()->subHour(),
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->get(route('meetings.pdf', $meeting))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
@@ -99,7 +102,7 @@ class ExampleTest extends TestCase
         $newStart = now()->addDays(2)->setTime(10, 30);
         $newEnd = $newStart->copy()->addHour();
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->patch(route('meetings.reschedule', $meeting), [
                 'start_date' => $newStart->format('Y-m-d H:i'),
                 'end_date' => $newEnd->format('Y-m-d H:i'),
@@ -126,7 +129,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->post(route('meetings.store'), [
                 'name' => 'John Smith',
                 'email' => 'john@example.com',
@@ -157,7 +160,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->post(route('meetings.store'), [
                 'name' => 'John Smith',
                 'email' => 'john@example.com',
@@ -185,7 +188,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->post(route('meetings.store'), [
                 'name' => 'John Smith',
                 'email' => 'john@example.com',
@@ -223,7 +226,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->patch(route('meetings.reschedule', $meeting), [
                 'start_date' => $existingMeeting->start_date->format('Y-m-d H:i:s'),
                 'end_date' => $existingMeeting->end_date->format('Y-m-d H:i:s'),
@@ -240,13 +243,99 @@ class ExampleTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
+    public function test_non_admin_cannot_access_admin_dashboard_or_meeting_tools(): void
+    {
+        $nonAdmin = User::factory()->nonAdmin()->create();
+
+        $this->actingAs($nonAdmin)
+            ->get(route('admin.dashboard'))
+            ->assertForbidden();
+
+        $this->get(route('meetings.index'))
+            ->assertForbidden();
+
+        $this->get(route('sessions.index'))
+            ->assertForbidden();
+
+        $this->get(route('landing'))
+            ->assertSee('Admin login')
+            ->assertDontSee('id="sidebar"', false);
+    }
+
     public function test_authenticated_admin_can_access_console(): void
     {
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         $this->actingAs($user)
             ->get(route('admin.dashboard'))
             ->assertOk();
+    }
+
+    public function test_hybrid_meeting_automatically_creates_an_online_session_and_reserves_a_room(): void
+    {
+        $host = User::factory()->create();
+        $room = MeetingRoom::create([
+            'name' => 'Hybrid Room',
+            'number' => 'H-1',
+            'floor' => '1',
+        ]);
+
+        $response = $this->actingAs($host)->post(route('meetings.store'), [
+            'meeting_type' => 'hybrid',
+            'name' => 'Hybrid Host',
+            'email' => $host->email,
+            'phone' => '123456789',
+            'meeting_topic' => 'Hybrid planning',
+            'start_date' => now()->addDay()->format('Y-m-d H:i:s'),
+            'end_date' => now()->addDay()->addHour()->format('Y-m-d H:i:s'),
+            'meeting_room_id' => $room->id,
+        ]);
+
+        $meeting = Meeting::query()->where('email', $host->email)->firstOrFail();
+
+        $response->assertRedirect();
+        $this->assertTrue($meeting->is_online);
+        $this->assertSame($room->id, $meeting->meeting_room_id);
+        $this->assertNull($meeting->physical_location);
+        $this->assertSame($host->id, $meeting->host_user_id);
+        $this->assertSame('internal', $meeting->session_provider);
+        $this->assertStringContainsString('/meetings/', $response->headers->get('Location'));
+        $this->assertSame(
+            route('meetings.details', $meeting),
+            $response->headers->get('Location'),
+        );
+        $this->get($response->headers->get('Location'))
+            ->assertOk()
+            ->assertDontSee('Hybrid Session Overview');
+    }
+
+    public function test_admin_sidebar_is_hidden_on_public_pages(): void
+    {
+        $user = User::factory()->create();
+        $meeting = Meeting::create([
+            'meeting_code' => 'AYK-PUBLIC1',
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'phone' => '123456',
+            'meeting_topic' => 'Public meeting details',
+            'start_date' => now()->addHour(),
+            'end_date' => now()->addHours(2),
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('landing'))
+            ->assertOk()
+            ->assertDontSee('id="sidebar"', false);
+
+        $this->get(route('meetings.show', $meeting->meeting_code))
+            ->assertOk()
+            ->assertDontSee('id="sidebar"', false);
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('id="sidebar"', false)
+            ->assertSee('id="sidebar-toggle"', false);
     }
 
     public function test_booked_meetings_show_a_reschedule_action(): void
@@ -262,12 +351,12 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
-            ->get(route('admin.dashboard'))
+        $this->actingAs(User::factory()->create())
+            ->get(route('meetings.all'))
             ->assertOk()
             ->assertSee('Reschedule')
             ->assertSee('Attendance')
-            ->assertSee('Cancel')
+            ->assertSee('Edit')
             ->assertSee(route('meetings.reschedule.edit', 1), false);
     }
 
@@ -284,7 +373,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->get(route('meetings.attendance', $meeting))
             ->assertOk()
             ->assertSee('Upload attendee list')
@@ -300,19 +389,28 @@ class ExampleTest extends TestCase
         $this->post(route('register.submit'), [
             'name' => 'System Admin',
             'email' => 'admin@aykonmeet.test',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ])->assertRedirect(route('admin.dashboard'));
 
-        $this->assertDatabaseHas('users', ['email' => 'admin@aykonmeet.test']);
+        $this->assertDatabaseHas('users', ['email' => 'admin@aykonmeet.test', 'is_admin' => true]);
+
+        $this->post(route('logout'))->assertRedirect(route('landing'));
+        $this->get(route('register'))->assertForbidden();
+        $this->post(route('register.submit'), [
+            'name' => 'Second Admin',
+            'email' => 'second-admin@aykonmeet.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+        ])->assertForbidden();
     }
 
     public function test_root_route_serves_public_meeting_join_page(): void
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('Join your')
-            ->assertSee('Meeting code');
+            ->assertSee('Enter meeting code')
+            ->assertSee('Join meeting');
     }
 
     public function test_guest_can_open_a_meeting_with_its_code(): void
@@ -331,6 +429,171 @@ class ExampleTest extends TestCase
         $this->get(route('meetings.show', $meeting->meeting_code))
             ->assertOk()
             ->assertSee('Guest meeting');
+    }
+
+    public function test_entering_an_online_meeting_code_shows_join_card_without_copy_invite_link(): void
+    {
+        $meeting = Meeting::create([
+            'meeting_code' => 'AYK-ONLINE1',
+            'name' => 'Online host',
+            'email' => 'host@example.test',
+            'phone' => '123456',
+            'meeting_topic' => 'Online planning session',
+            'start_date' => now(),
+            'end_date' => now()->addHour(),
+            'status' => 'in_progress',
+            'is_online' => true,
+        ]);
+        $meeting->attendees()->create([
+            'full_name' => 'Invited participant',
+            'email' => 'private-attendee@example.test',
+            'phone' => '123456',
+        ]);
+
+        $this->followingRedirects()
+            ->get(route('meetings.join', ['code' => $meeting->meeting_code]))
+            ->assertOk()
+            ->assertSee('Online planning session')
+            ->assertSee('Hosted by Online host')
+            ->assertSee('video-stage')
+            ->assertSee('media-grid')
+            ->assertSee('controls-bar')
+            ->assertSee('micBtn')
+            ->assertSee('camBtn')
+            ->assertDontSee('Copy invite')
+            ->assertDontSee('Invite link')
+            ->assertDontSee('private-attendee@example.test');
+    }
+
+    public function test_meeting_details_actions_are_styled_without_a_cancel_button(): void
+    {
+        $meeting = Meeting::create([
+            'meeting_code' => 'AYK-ACTIONS',
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'phone' => '123456',
+            'meeting_topic' => 'Action layout meeting',
+            'start_date' => now()->addHour(),
+            'end_date' => now()->addHours(2),
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('meetings.show', $meeting->meeting_code))
+            ->assertOk()
+            ->assertSee('Start meeting')
+            ->assertDontSee('href="'.route('meetings.edit', $meeting).'"', false)
+            ->assertSee('Badges')
+            ->assertSee('Kiosk')
+            ->assertSee('Session report')
+            ->assertDontSee('Cancel');
+    }
+
+    public function test_authenticated_non_admin_can_start_a_scheduled_meeting_from_its_details(): void
+    {
+        $meeting = Meeting::create([
+            'meeting_code' => 'AYK-START1',
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'phone' => '123456',
+            'meeting_topic' => 'Team kickoff',
+            'start_date' => now()->addHour(),
+            'end_date' => now()->addHours(2),
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs(User::factory()->create(['is_admin' => false]))
+            ->get(route('meetings.show', $meeting->meeting_code))
+            ->assertOk()
+            ->assertSee('Start meeting')
+            ->assertSee('action="'.route('meetings.start', $meeting).'"', false);
+    }
+
+    public function test_authenticated_non_admin_can_end_a_meeting_after_starting_it(): void
+    {
+        $meeting = Meeting::create([
+            'meeting_code' => 'AYK-END001',
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'phone' => '123456',
+            'meeting_topic' => 'Team kickoff',
+            'start_date' => now()->addHour(),
+            'end_date' => now()->addHours(2),
+            'status' => 'scheduled',
+        ]);
+        $user = User::factory()->create(['is_admin' => false]);
+
+        $this->actingAs($user)
+            ->post(route('meetings.start', $meeting))
+            ->assertRedirect(route('meetings.show', $meeting->meeting_code));
+
+        $this->get(route('meetings.show', $meeting->meeting_code))
+            ->assertOk()
+            ->assertSee('End meeting')
+            ->assertSee('action="'.route('meetings.end', $meeting).'"', false)
+            ->assertDontSee('Start meeting');
+
+        $this->post(route('meetings.end', $meeting))
+            ->assertRedirect();
+
+        $this->assertSame('completed', $meeting->fresh()->status);
+        $this->assertNotNull($meeting->fresh()->ended_at);
+    }
+
+    public function test_guest_sees_start_meeting_action_and_returns_to_it_after_sign_in(): void
+    {
+        $meeting = Meeting::create([
+            'meeting_code' => 'AYK-GUEST1',
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'phone' => '123456',
+            'meeting_topic' => 'Team kickoff',
+            'start_date' => now()->addHour(),
+            'end_date' => now()->addHours(2),
+            'status' => 'scheduled',
+        ]);
+        $user = User::factory()->create(['is_admin' => false]);
+
+        $this->get(route('meetings.show', $meeting->meeting_code))
+            ->assertOk()
+            ->assertSee('Start meeting')
+            ->assertDontSee('Sign in to start meeting')
+            ->assertSee('href="'.route('login', ['meeting' => $meeting->meeting_code]).'"', false);
+
+        $this->post(route('login.submit'), [
+            'email' => $user->email,
+            'password' => 'password',
+            'meeting_code' => $meeting->meeting_code,
+        ])->assertRedirect(route('meetings.show', $meeting->meeting_code));
+    }
+
+    public function test_completed_meeting_still_shows_export_pdf_action(): void
+    {
+        $meeting = Meeting::create([
+            'meeting_code' => 'AYK-ENDED1',
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'phone' => '123456',
+            'meeting_topic' => 'Completed meeting',
+            'start_date' => now()->subHours(2),
+            'end_date' => now()->subHour(),
+            'started_at' => now()->subHours(2),
+            'ended_at' => now()->subHour(),
+            'status' => 'completed',
+        ]);
+
+        $meeting->attendees()->create([
+            'full_name' => 'Guest One',
+            'email' => 'guest@example.com',
+            'phone' => '123456',
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('meetings.show', $meeting->meeting_code))
+            ->assertOk()
+            ->assertSee('Session report')
+            ->assertSee('href="'.route('meetings.pdf', $meeting).'"', false)
+            ->assertDontSee('Kiosk');
     }
 
     public function test_unknown_meeting_code_returns_to_join_page_with_an_error(): void
@@ -353,7 +616,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->patch(route('meetings.update', $meeting), [
                 'name' => 'Jane Doe',
                 'email' => 'jane@example.com',
@@ -398,7 +661,7 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->patch(route('meetings.update', $meeting), [
                 'name' => 'John Smith',
                 'email' => 'john@example.com',
@@ -415,7 +678,7 @@ class ExampleTest extends TestCase
 
     public function test_admin_can_cancel_a_meeting_and_attendees_are_notified(): void
     {
-        \Illuminate\Support\Facades\Mail::fake();
+        Mail::fake();
 
         $meeting = Meeting::create([
             'meeting_code' => 'AYK-CANCEL1',
@@ -430,7 +693,7 @@ class ExampleTest extends TestCase
 
         $meeting->attendees()->create(['full_name' => 'Alice Example', 'email' => 'alice@example.com', 'phone' => '111']);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->post(route('meetings.cancel', $meeting))
             ->assertRedirect();
 
@@ -439,7 +702,7 @@ class ExampleTest extends TestCase
         $this->assertSame('cancelled', $meeting->status);
         $this->assertNotNull($meeting->cancelled_at);
 
-        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\MeetingCancelled::class);
+        Mail::assertSent(MeetingCancelled::class);
     }
 
     public function test_cancelled_meeting_cannot_be_started_or_exported(): void
@@ -456,7 +719,7 @@ class ExampleTest extends TestCase
             'cancelled_at' => now(),
         ]);
 
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         $this->actingAs($user)
             ->post(route('meetings.start', $meeting))
@@ -483,7 +746,7 @@ class ExampleTest extends TestCase
             'cancelled_at' => now(),
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->post(route('meetings.reopen', $meeting))
             ->assertRedirect();
 
@@ -506,9 +769,11 @@ class ExampleTest extends TestCase
             'status' => 'scheduled',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->post(route('meetings.notes', $meeting), ['notes' => 'Decision: release on Friday.'])
-            ->assertRedirect();
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertHeader('content-disposition', 'inline; filename=meeting-AYK-NOTES01.pdf');
 
         $this->assertSame('Decision: release on Friday.', $meeting->refresh()->notes);
     }
@@ -527,7 +792,7 @@ class ExampleTest extends TestCase
         ]);
 
         $attendee = $meeting->attendees()->create(['full_name' => 'Alice Example', 'email' => 'alice@example.com', 'phone' => '111']);
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         $this->actingAs($user)
             ->post(route('kiosk.check-in', $meeting), ['attendee_code' => $attendee->attendee_code])
@@ -598,7 +863,7 @@ class ExampleTest extends TestCase
 
         $attendee = $meeting->attendees()->create(['full_name' => 'Alice Example', 'email' => 'alice@example.com', 'phone' => '111']);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->get(route('meetings.badges', $meeting))
             ->assertOk()
             ->assertSee('Alice Example')
@@ -623,7 +888,7 @@ class ExampleTest extends TestCase
             'notes' => 'Unanimous approval.',
         ]);
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->get(route('meetings.pdf', $meeting))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');

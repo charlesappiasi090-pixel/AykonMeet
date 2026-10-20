@@ -89,5 +89,6 @@
 .admin-page-link:hover{text-decoration:underline}
 @media(max-width:980px){.admin-hero{grid-template-columns:1fr;padding:34px 30px;gap:30px}}
 @media(max-width:800px){.admin-page-head{align-items:flex-start;flex-direction:column}.admin-page-head h1{font-size:36px}.admin-page-stats{grid-template-columns:1fr 1fr}.admin-page-panel{padding:20px;overflow-x:auto}.admin-page-item{align-items:flex-start;flex-direction:column}.admin-page-bar{grid-template-columns:85px 1fr 34px;gap:8px}.admin-section{flex-direction:column;align-items:flex-start}}
-@media(max-width:640px){.admin-hero{padding:28px 22px}.admin-tiles{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.admin-hero{padding:28px 18px;border-radius:16px}.admin-hero h1{font-size:30px}.admin-tiles{grid-template-columns:1fr 1fr}.admin-actions .admin-btn,.admin-page-actions .admin-act{width:100%}.admin-page-head h1{font-size:30px}.admin-page-stats{grid-template-columns:1fr 1fr}.admin-form{max-width:none}}
+@media(max-width:420px){.admin-tiles,.admin-page-stats{grid-template-columns:1fr}.admin-page-bar{grid-template-columns:1fr;gap:6px}.admin-page-bar strong{text-align:left}}
 </style>

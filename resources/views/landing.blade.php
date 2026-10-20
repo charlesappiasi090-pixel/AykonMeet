@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache,no-store">
 <title>AykonMeet — Make every minute count</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -64,18 +64,19 @@ h1 em{font-style:italic;color:#f7c948;font-weight:500}
 footer{position:relative;z-index:5;padding:32px 56px;display:flex;justify-content:space-between;align-items:center;color:rgba(255,255,255,.5);font-size:12px;font-weight:500;border-top:1px solid rgba(255,255,255,.08);background:rgba(17,43,73,.8);backdrop-filter:blur(10px)}
 footer a{color:inherit;text-decoration:none;transition:color .15s}
 footer a:hover{color:#f7c948}
-@media(max-width:960px){nav{padding:16px 24px}.hero{grid-template-columns:1fr;padding:48px 24px;gap:40px}.hero-copy{max-width:none}.feature-grid{grid-template-columns:1fr}.preview-card{order:-1}footer{padding:24px;flex-direction:column;gap:12px;text-align:center}}
+@media(max-width:960px){nav{padding:16px 24px}.hero{grid-template-columns:1fr;padding:48px 24px;gap:40px}.hero-copy,.hero-sub{max-width:none}.feature-grid{grid-template-columns:1fr 1fr}.preview-card{order:-1}footer{padding:24px;flex-direction:column;gap:12px;text-align:center}}
+@media(max-width:640px){nav{padding:max(12px,env(safe-area-inset-top)) 16px 12px}.logo{font-size:18px;gap:8px}.logo-mark{width:34px;height:34px;font-size:16px}.admin-btn{padding:10px 12px}.hero{padding:28px 16px 36px;gap:22px}h1{font-size:clamp(34px,10vw,46px);letter-spacing:-1px}.hero-sub{font-size:16px;margin-bottom:22px}.join-card{padding:18px}.join-row{flex-direction:column}.join-submit{width:100%}.feature-grid{grid-template-columns:1fr}.feature-card{padding:18px}.preview-card{padding:18px}.preview-stats{grid-template-columns:1fr 1fr 1fr}footer{padding:20px 16px max(20px,env(safe-area-inset-bottom))}}
 </style></head><body>
 <div class="page">
 <nav>
 <a class="logo" href="/"><span class="logo-mark">A</span><span>Aykon<span class="logo-accent">Meet</span></span></a>
-<a class="admin-btn" href="{{ route('login') }}">Admin login \u2192</a>
+<a class="admin-btn" href="{{ route('login') }}">Admin login →</a>
 </nav>
 <main class="hero">
 <div class="hero-copy">
 <span class="eyebrow">All-in-one meetings</span>
 <h1>Book rooms, check in guests,<br>and host video calls<em>.</em></h1>
-<p class="hero-sub">The meeting platform built for teams that value every minute. No downloads, no friction \u2014 just one code to join.</p>
+<p class="hero-sub">The meeting platform built for teams that value every minute. No downloads, no friction — just one code to join.</p>
 <div class="join-card">
 <label for="mc">Enter meeting code</label>
 <form class="join-row" action="{{ route('meetings.join') }}" method="get">
@@ -108,7 +109,7 @@ footer a:hover{color:#f7c948}
 </article>
 </div>
 <article class="preview-card">
-<div class="preview-header"><span class="preview-title">Dashboard</span><span class="preview-live">\u25cf Live</span></div>
+<div class="preview-header"><span class="preview-title">Dashboard</span><span class="preview-live">Live</span></div>
 <div class="preview-stats">
 <div class="pstat"><div class="n">3</div><div class="l">Live meetings</div></div>
 <div class="pstat"><div class="n">12</div><div class="l">Meetings today</div></div>
@@ -121,7 +122,7 @@ footer a:hover{color:#f7c948}
 </div>
 </main>
 <footer>
-<span>AykonMeet \u00b7 Make every minute count</span>
+<span>AykonMeet · Make every minute count</span>
 <div style="display:flex;gap:16px">
 <a href="#">Privacy</a>
 <a href="#">Terms</a>

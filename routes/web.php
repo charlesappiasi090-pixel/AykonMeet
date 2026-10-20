@@ -52,6 +52,8 @@ Route::post('/meetings/{meeting}/session-participants/send-code', [OnlineSession
     ->middleware(['signed', 'throttle:30,1'])->name('sessions.participants.send-code');
 Route::post('/meetings/{meeting}/session-participants', [OnlineSessionController::class, 'joinParticipant'])
     ->middleware(['signed', 'throttle:10,1'])->name('sessions.participants.join');
+Route::post('/meetings/{meeting}/session-participants/guest', [OnlineSessionController::class, 'joinGuest'])
+    ->middleware(['signed', 'throttle:10,1'])->name('sessions.participants.guest-join');
 Route::post('/meetings/{meeting}/session-participants/heartbeat', [OnlineSessionController::class, 'heartbeat'])
     ->middleware('signed')->name('sessions.participants.heartbeat');
 Route::post('/meetings/{meeting}/session-participants/mute', [OnlineSessionController::class, 'setParticipantMute'])

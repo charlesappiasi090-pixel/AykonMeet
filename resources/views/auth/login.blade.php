@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <title>Admin Login — AykonMeet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -48,7 +48,7 @@ body{font-family:"DM Sans",sans-serif;background:#f7f9fb;color:#112b49}
 .err-banner strong{display:block;font-family:"Space Grotesk",sans-serif;margin-bottom:3px}
 .field{margin-bottom:18px}
 .field label{display:block;color:#112b49;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
-.field input[type=email],.field input[type=password],.field input[type=text]{width:100%;height:50px;border:1.5px solid #dde3ea;border-radius:10px;padding:0 16px;font:500 15px "DM Sans",sans-serif;color:#112b49;background:#f7f9fb;outline:none;transition:all .2s}
+.field input[type=email],.field input[type=password],.field input[type=text]{width:100%;height:50px;border:1.5px solid #dde3ea;border-radius:10px;padding:0 16px;font:500 16px "DM Sans",sans-serif;color:#112b49;background:#f7f9fb;outline:none;transition:all .2s}
 .field input::placeholder{color:#9aa8b8}
 .field input:focus{border-color:#112b49;background:#fff;box-shadow:0 0 0 4px rgba(247,201,72,.28)}
 .pw-wrap{position:relative}
@@ -65,7 +65,8 @@ body{font-family:"DM Sans",sans-serif;background:#f7f9fb;color:#112b49}
 .submit span{font-size:18px;transition:transform .15s}.submit:hover span{transform:translateX(4px)}
 .alt{margin-top:24px;text-align:center;font-size:13px;color:#6b7a8d}
 .alt a{color:#112b49;font-weight:700;text-decoration:none}.alt a:hover{color:#b18800}
-@media(max-width:860px){html,body{height:auto}.lf{height:auto;min-height:100vh;grid-template-columns:1fr}.brand-side{padding:36px 28px;min-height:300px}.brand-mid h1{font-size:38px}.form-side{padding:36px 28px}}
+@media(max-width:860px){html,body{height:auto}.lf{height:auto;min-height:100vh;min-height:100dvh;grid-template-columns:1fr;overflow:visible}.brand-side{padding:36px 28px 28px;min-height:0}.brand-mid h1{font-size:38px}.preview{display:none}.form-side{padding:28px 22px 36px}}
+@media(max-width:420px){.brand-side{padding:24px 16px 20px}.brand-mid h1{font-size:32px}.form-side{padding:24px 16px max(28px,env(safe-area-inset-bottom))}.form-side h2{font-size:28px}.row{align-items:flex-start;flex-direction:column}}
 </style></head><body>
 <div class="lf">
 <div class="brand-side">

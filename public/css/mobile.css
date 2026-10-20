@@ -1,0 +1,616 @@
+/* Phone and small-tablet layout. Loaded after page styles. */
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+img, video, svg, canvas, iframe {
+    max-width: 100%;
+}
+
+@media (max-width: 960px) {
+    html, body {
+        overflow-x: clip;
+        max-width: 100%;
+    }
+
+    body.nav-open {
+        overflow: hidden;
+    }
+
+    .sb-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 45;
+        background: rgba(11, 31, 56, 0.55);
+    }
+
+    .sb-backdrop.on {
+        display: block;
+    }
+
+    .sidebar-fb {
+        width: min(86vw, 300px);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .sb-toggle {
+        top: max(12px, env(safe-area-inset-top));
+        left: max(12px, env(safe-area-inset-left));
+        width: 44px;
+        height: 44px;
+    }
+
+    body.authed:not(.meeting-fullscreen) .page-shell {
+        padding: 76px 16px 40px !important;
+    }
+
+    .page-shell {
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+
+    .footer {
+        padding-bottom: max(28px, env(safe-area-inset-bottom));
+    }
+}
+
+@media (max-width: 800px) {
+    .topbar {
+        height: auto;
+        min-height: 64px;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+    }
+
+    .topbar nav {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .brand {
+        min-width: 0;
+        font-size: 18px;
+    }
+
+    .admin-link {
+        min-width: 0;
+        min-height: 40px;
+    }
+
+    .page-shell h1,
+    .db-title,
+    .admin-hero h1,
+    .admin-page-head h1,
+    .meeting-page-head h1,
+    .check-ins-title,
+    .sessions-hero h1,
+    .all-meetings-head h1 {
+        overflow-wrap: anywhere;
+        letter-spacing: -0.6px;
+    }
+
+    .section-heading,
+    .meeting-page-head,
+    .admin-page-head,
+    .admin-section,
+    .admin-panel-head,
+    .list-heading,
+    .live-page-head,
+    .attendance-head,
+    .all-meetings-head,
+    .ud-section-head,
+    .ud-item,
+    .hybrid-create-heading,
+    .session-head,
+    .db-hero-inner,
+    .dashboard-header {
+        align-items: flex-start;
+    }
+
+    .section-heading,
+    .meeting-page-head,
+    .admin-page-head,
+    .admin-section,
+    .admin-panel-head,
+    .live-page-head,
+    .all-meetings-head,
+    .hybrid-create-heading,
+    .dashboard-header,
+    .ud-item {
+        flex-direction: column;
+    }
+
+    .db-hero-inner,
+    .db-stat-grid,
+    .dashboard-grid,
+    .dashboard-quick,
+    .hero-grid,
+    .meeting-detail-grid,
+    .form-grid,
+    .auth-grid,
+    .admin-hero,
+    .admin-page-stats,
+    .hybrid-room-layout,
+    .hybrid-create-layout,
+    .hybrid-create-fields,
+    .hybrid-organizer-fields,
+    .hybrid-organizer-groups,
+    .hybrid-detail-pair,
+    .hybrid-choices,
+    .room-columns,
+    .room-columns.on,
+    .lby-grid,
+    .lby-head,
+    .ivl-grid,
+    .ivl-head,
+    .mdd-cols,
+    .mdd-head,
+    .mdd-share,
+    .mdd-grid2,
+    .sessions-hero,
+    .session-card,
+    .inv-grid,
+    .inv-facts,
+    .civ-grid,
+    .public-online-card-inner,
+    .live-meeting-card,
+    .attendance-grid,
+    .attendance-form-grid,
+    .all-meeting-row,
+    .wizard-page .form-grid,
+    .wizard-page .settings-grid,
+    .mch-hero,
+    .check-in-row,
+    .online-share-link,
+    .hybrid-share-link,
+    .multi-company-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .admin-page-stats,
+    .db-stat-grid,
+    .session-stat-grid,
+    .admin-tiles,
+    .rm-tiles,
+    .check-ins-summary,
+    .all-meetings-summary,
+    .mch-stats-grid,
+    .stat-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .page-shell [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    .nmf-days-grid,
+    .page-shell .nmf-days-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    }
+
+    .admin-page-panel,
+    .panel:has(table),
+    .ud-table-wrap,
+    .meeting-table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-page-table {
+        min-width: 640px;
+    }
+
+    .ud-table {
+        min-width: 520px;
+    }
+
+    .panel,
+    .admin-page-panel,
+    .modal,
+    .schedule-dialog {
+        max-width: 100%;
+    }
+
+    .panel,
+    .admin-page-panel {
+        padding: 18px;
+    }
+
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    .button,
+    .admin-btn,
+    .db-btn,
+    .admin-act,
+    .nmf-btn,
+    .lookup-bar button {
+        min-height: 44px;
+    }
+
+    .meeting-actions,
+    .dialog-actions,
+    .nmf-actions,
+    .wizard-actions,
+    .db-hero-actions,
+    .admin-actions,
+    .import-form,
+    .checkin-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .meeting-actions .button,
+    .dialog-actions .button,
+    .nmf-actions .nmf-btn,
+    .wizard-actions .button,
+    .db-hero-actions .db-btn,
+    .admin-actions .admin-btn,
+    .checkin-form .button,
+    .public-online-join {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .checkin-form,
+    .lookup-bar div,
+    .join-row {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .code-pill,
+    .big-code strong,
+    .online-share-url {
+        overflow-wrap: anywhere;
+    }
+
+    .meeting-row,
+    .attendee-row,
+    .room-row,
+    .admin-page-item {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .meeting-time {
+        min-width: 0;
+        margin-left: 0;
+    }
+
+    .company-selector {
+        flex-wrap: wrap;
+    }
+
+    .host-waiting-panel {
+        top: auto;
+        right: 8px;
+        bottom: max(8px, env(safe-area-inset-bottom));
+        left: 8px;
+        width: auto;
+        max-height: min(52dvh, 420px);
+    }
+
+    dialog.meeting-dialog,
+    #meeting-type-dialog,
+    #new-meeting-dialog,
+    .schedule-dialog {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    #meeting-type-dialog .form-panel,
+    #new-meeting-dialog .form-panel,
+    .meeting-dialog .form-panel,
+    .schedule-dialog {
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+    }
+
+    #meeting-type-dialog .form-panel,
+    .meeting-dialog:not(#new-meeting-dialog) .form-panel,
+    .schedule-dialog {
+        padding: 22px 16px !important;
+    }
+
+    .nmf-body {
+        padding: 20px 16px 28px !important;
+    }
+
+    .modal-backdrop {
+        padding: 0;
+        align-items: end;
+    }
+
+    .modal {
+        max-width: none;
+        border-radius: 16px 16px 0 0;
+        max-height: 92dvh;
+        overflow: auto;
+    }
+
+    .hybrid-room-page .video-stage {
+        min-height: min(62dvh, 480px);
+    }
+
+    .hybrid-room-page .session-head {
+        grid-template-columns: 1fr !important;
+    }
+
+    .hybrid-connection {
+        white-space: normal;
+        justify-self: start;
+    }
+
+    .media-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .lby-stage,
+    .lby-stage video,
+    .ivl-stage,
+    .ivl-stage video {
+        min-height: 220px;
+    }
+}
+
+@media (max-width: 520px) {
+    body.authed:not(.meeting-fullscreen) .page-shell,
+    body:not(.meeting-fullscreen) .page-shell {
+        padding-left: max(12px, env(safe-area-inset-left)) !important;
+        padding-right: max(12px, env(safe-area-inset-right)) !important;
+    }
+
+    body.authed:not(.meeting-fullscreen) .page-shell {
+        padding-top: 72px !important;
+    }
+
+    .db-hero,
+    .admin-hero,
+    .rm-hero,
+    .check-ins-hero,
+    .ud-hero {
+        padding: 22px 16px !important;
+        border-radius: 16px;
+    }
+
+    .db-title,
+    .admin-page-head h1,
+    .dashboard-header h1 {
+        font-size: 30px !important;
+    }
+
+    .db-stat-grid,
+    .admin-page-stats,
+    .admin-tiles,
+    .stat-grid,
+    .session-stat-grid,
+    .rm-tiles,
+    .all-meetings-summary,
+    .mch-stats-grid,
+    .check-ins-summary,
+    .hybrid-counts,
+    .preview-stats {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px;
+    }
+
+    .db-stat-grid .stat-card,
+    .stat-card {
+        min-height: 0;
+        padding: 14px;
+    }
+
+    .db-stat-grid .stat-card strong,
+    .stat-card strong {
+        font-size: 28px;
+    }
+
+    .empty-state {
+        padding: 28px 16px;
+    }
+
+    .timer {
+        letter-spacing: -1px;
+        margin-top: 24px;
+    }
+
+    .status-panel {
+        min-height: 0;
+    }
+
+    .detail-list div,
+    .detail-list strong {
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+
+    .detail-list div {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .ctrl {
+        width: 52px;
+        height: 52px;
+    }
+
+    .back-link {
+        margin-bottom: 18px;
+    }
+}
+
+@media (max-width: 380px) {
+    .db-stat-grid,
+    .admin-tiles,
+    .stat-grid,
+    .session-stat-grid,
+    .admin-page-stats {
+        grid-template-columns: 1fr !important;
+    }
+
+    .brand span,
+    .logo {
+        font-size: 16px;
+    }
+}
+
+/* In-call room on a phone: one page scroll, no nested scroll areas. */
+@media (max-width: 900px) {
+    body.meeting-fullscreen {
+        height: auto;
+        overflow-x: clip;
+        overflow-y: auto;
+    }
+
+    body.meeting-fullscreen .page-shell,
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page) {
+        height: auto;
+        max-height: none;
+        min-height: 100dvh;
+        overflow: visible;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .video-stage {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 0;
+        gap: 8px;
+        padding: 8px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        overflow: visible;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .session-head {
+        right: 0;
+        left: 0;
+        padding: max(10px, env(safe-area-inset-top)) 14px 20px;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .media-grid,
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .media-grid:has(> .media-tile:nth-child(n)) {
+        order: 1;
+        flex: none;
+        grid-column: auto;
+        grid-row: auto;
+        width: 100%;
+        height: auto !important;
+        min-height: 0 !important;
+        padding-bottom: 0 !important;
+        align-content: start;
+        grid-auto-rows: auto;
+        overflow: visible !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .media-grid:has(> .media-tile:nth-child(2)) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .media-grid > .media-tile {
+        grid-column: auto !important;
+        height: auto !important;
+        aspect-ratio: 16 / 9 !important;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .media-tile video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        max-width: none;
+        aspect-ratio: auto !important;
+        object-fit: cover;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .controls-bar {
+        position: static !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        order: 2;
+        flex: none;
+        width: 100%;
+        max-width: none !important;
+        margin: 0;
+        transform: none !important;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .ctrl {
+        width: 56px;
+        height: 50px;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .ctrl.leave {
+        width: max-content;
+        margin-left: 0;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .session-status {
+        position: static !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        order: 4;
+        transform: none !important;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .room-columns,
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .room-columns.on {
+        display: flex;
+        grid-column: auto;
+        grid-row: auto;
+        order: 3;
+        flex: none;
+        width: 100%;
+        max-height: none;
+        min-height: 0;
+        overflow: visible;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .participant-panel.on,
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .room-columns .chat-panel,
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .doc-panel.on {
+        flex: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .participant-list,
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .chat-messages,
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .doc-list {
+        flex: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    body.meeting-fullscreen .session-page:not(.hybrid-room-page):has(.controls-bar.on) .participant-row {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .hybrid-room-page .controls-bar.on,
+    .hybrid-room-page .controls-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 4;
+    }
+}

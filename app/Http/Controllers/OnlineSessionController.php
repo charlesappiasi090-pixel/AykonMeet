@@ -144,6 +144,7 @@ class OnlineSessionController extends Controller
         $urls = [
             'send_code' => URL::signedRoute('sessions.participants.send-code', ['meeting' => $meeting]),
             'join' => URL::signedRoute('sessions.participants.join', ['meeting' => $meeting]),
+            'guest_join' => URL::signedRoute('sessions.participants.guest-join', ['meeting' => $meeting]),
             'heartbeat' => URL::signedRoute('sessions.participants.heartbeat', ['meeting' => $meeting]),
             'leave' => URL::signedRoute('sessions.participants.leave', ['meeting' => $meeting]),
             'status' => URL::signedRoute('sessions.participants.status', ['meeting' => $meeting]),
@@ -184,9 +185,6 @@ class OnlineSessionController extends Controller
         $directJoin = null;
         if ($invitedAttendee) {
             [$participant, $token] = $this->createSessionParticipant($meeting, $invitedAttendee, $invitedAttendee->full_name, false);
-            $directJoin = $this->participantJoinPayload($meeting, $participant, $token);
-        } elseif (! $isHybrid && ! $isHost) {
-            [$participant, $token] = $this->createSessionParticipant($meeting, null, 'Guest', false);
             $directJoin = $this->participantJoinPayload($meeting, $participant, $token);
         }
 
@@ -246,6 +244,11 @@ class OnlineSessionController extends Controller
             'admitted_at' => $requiresAdmission ? null : now(),
             'last_seen_at' => now(),
         ]);
+
+        $this->supersedeEarlierSessions($participant);
+        if ($attendee && $participant->isAdmitted()) {
+            $attendee->update(['checked_out_at' => null]);
+        }
 
         return [$participant, $token];
     }
@@ -424,6 +427,34 @@ class OnlineSessionController extends Controller
         return response()->json([
             'message' => 'If this email is invited, a verification code has been sent.',
         ]);
+    }
+
+    public function joinGuest(Request $request, Meeting $meeting)
+    {
+        abort_if($meeting->isHybrid(), 404);
+        $this->ensureJoinable($meeting);
+
+        if ($meeting->inviteeJoinState() === 'closed') {
+            return response()->json([
+                'status' => 'ended',
+                'message' => 'This meeting has ended and can no longer be joined.',
+            ], 410);
+        }
+
+        $isHost = auth()->check()
+            && $meeting->host_user_id !== null
+            && auth()->id() === $meeting->host_user_id;
+        abort_if($isHost, 403, 'Hosts join with their account email.');
+
+        $data = $request->validate([
+            'display_name' => ['required', 'string', 'max:80'],
+        ]);
+        $displayName = trim(preg_replace('/\s+/u', ' ', strip_tags($data['display_name'])) ?? '');
+        abort_if($displayName === '', 422, 'Enter your name so the host knows who is joining.');
+
+        [$participant, $token] = $this->createSessionParticipant($meeting, null, $displayName, false);
+
+        return response()->json($this->participantJoinPayload($meeting, $participant, $token));
     }
 
     public function joinParticipant(Request $request, Meeting $meeting)
@@ -1145,7 +1176,9 @@ class OnlineSessionController extends Controller
             'token_hash' => null,
         ]);
 
-        $participant->attendee?->update(['checked_out_at' => now()]);
+        if (! $this->samePersonStillPresent($participant)) {
+            $participant->attendee?->update(['checked_out_at' => now()]);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -1579,6 +1612,54 @@ class OnlineSessionController extends Controller
     private function markParticipantLeft(OnlineSessionParticipant $participant, $leftAt): void
     {
         $participant->update(['left_at' => $leftAt, 'hand_raised' => false]);
-        $participant->attendee?->update(['checked_out_at' => $leftAt]);
+        if (! $this->samePersonStillPresent($participant)) {
+            $participant->attendee?->update(['checked_out_at' => $leftAt]);
+        }
+    }
+
+    /**
+     * A refresh creates a new peer. Close the earlier live session for that
+     * same person so they are not listed, or shown on video, twice.
+     */
+    private function supersedeEarlierSessions(OnlineSessionParticipant $participant): void
+    {
+        $this->samePersonQuery($participant)->get()->each(function (OnlineSessionParticipant $earlier) {
+            $earlier->update([
+                'left_at' => now(),
+                'hand_raised' => false,
+                'token_hash' => null,
+            ]);
+        });
+    }
+
+    private function samePersonStillPresent(OnlineSessionParticipant $participant): bool
+    {
+        return $this->samePersonQuery($participant)->exists();
+    }
+
+    private function samePersonQuery(OnlineSessionParticipant $participant)
+    {
+        return OnlineSessionParticipant::query()
+            ->where('meeting_id', $participant->meeting_id)
+            ->whereKeyNot($participant->id)
+            ->whereNull('left_at')
+            ->where(function ($query) use ($participant) {
+                if ($participant->attendee_id) {
+                    $query->orWhere('attendee_id', $participant->attendee_id);
+                }
+                if ($participant->user_id) {
+                    $query->orWhere('user_id', $participant->user_id);
+                }
+                if ($participant->is_host) {
+                    $query->orWhere('is_host', true);
+                }
+                if (! $participant->attendee_id && ! $participant->is_host) {
+                    $query->orWhere(function ($guests) use ($participant) {
+                        $guests->whereNull('attendee_id')
+                            ->where('is_host', false)
+                            ->whereRaw('LOWER(display_name) = ?', [strtolower(trim($participant->display_name))]);
+                    });
+                }
+            });
     }
 }

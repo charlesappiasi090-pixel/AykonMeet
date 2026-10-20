@@ -71,6 +71,46 @@ class HostPermissionsTest extends TestCase
         $this->assertFalse($admitted['is_co_host']);
     }
 
+    public function test_share_link_guest_appears_in_the_waiting_room_under_the_name_they_enter(): void
+    {
+        $host = User::factory()->create();
+        $meeting = $this->meeting([
+            'host_user_id' => $host->id,
+            'settings' => ['waiting_room' => true],
+        ]);
+        $joinPage = URL::signedRoute('sessions.join', ['meeting' => $meeting]);
+
+        $this->get($joinPage)
+            ->assertOk()
+            ->assertSee('Enter your name so the host can see who is waiting to join.', false)
+            ->assertSee('guestDisplayName', false);
+        $this->assertDatabaseMissing('online_session_participants', ['meeting_id' => $meeting->id]);
+
+        $this->postJson(URL::signedRoute('sessions.participants.guest-join', ['meeting' => $meeting]), [
+            'display_name' => '   ',
+        ])->assertStatus(422);
+
+        $guest = $this->postJson(URL::signedRoute('sessions.participants.guest-join', ['meeting' => $meeting]), [
+            'display_name' => '  Ada Lovelace  ',
+        ])->assertOk()->json();
+
+        $this->assertTrue($guest['waiting']);
+        $this->assertDatabaseHas('online_session_participants', [
+            'peer_id' => $guest['peer_id'],
+            'display_name' => 'Ada Lovelace',
+            'status' => OnlineSessionParticipant::STATUS_WAITING,
+        ]);
+
+        $this->actingAs($host)->postJson(URL::signedRoute('sessions.participants.join', ['meeting' => $meeting]), [
+            'email' => $host->email,
+        ])->assertOk();
+
+        $this->actingAs($host)
+            ->postJson(URL::signedRoute('sessions.participants.waiting-room', ['meeting' => $meeting]), [])
+            ->assertOk()
+            ->assertJsonPath('waiting.0.display_name', 'Ada Lovelace');
+    }
+
     public function test_host_can_admit_everyone_from_the_waiting_room(): void
     {
         Mail::fake();
@@ -256,6 +296,46 @@ class HostPermissionsTest extends TestCase
         $this->assertTrue($settings['allow_participant_hand']);
         $this->assertSame('Trusted Person', $settings['co_host']);
         $this->assertSame(['mute_participants', 'remove_participants'], $settings['co_host_permissions']);
+    }
+
+    public function test_rejoining_replaces_the_previous_session_instead_of_duplicating_the_person(): void
+    {
+        Mail::fake();
+
+        $host = User::factory()->create();
+        $meeting = $this->meeting(['host_user_id' => $host->id]);
+        $attendee = $this->attendee($meeting, 'Charles', 'charles@example.test');
+        $joinUrl = URL::signedRoute('sessions.participants.join', ['meeting' => $meeting]);
+        $guestUrl = URL::signedRoute('sessions.participants.guest-join', ['meeting' => $meeting]);
+
+        $first = $this->postJson($joinUrl, [
+            'email' => $attendee->email,
+            'verification_code' => $this->code($meeting, $attendee),
+        ])->assertOk()->json();
+        $second = $this->postJson($joinUrl, [
+            'email' => $attendee->email,
+            'verification_code' => $this->code($meeting, $attendee),
+        ])->assertOk()->json();
+
+        $this->assertNotSame($first['peer_id'], $second['peer_id']);
+        $this->assertNotNull(OnlineSessionParticipant::where('peer_id', $first['peer_id'])->value('left_at'));
+        $this->assertNull(OnlineSessionParticipant::where('peer_id', $second['peer_id'])->value('left_at'));
+        $this->assertNull($attendee->refresh()->checked_out_at);
+        $this->assertSame([], $second['participants']);
+
+        $this->postJson($guestUrl, ['display_name' => 'Rayyy'])->assertOk();
+        $returningGuest = $this->postJson($guestUrl, ['display_name' => 'Rayyy'])->assertOk()->json();
+        $otherGuest = $this->postJson($guestUrl, ['display_name' => 'Ada'])->assertOk()->json();
+
+        $roster = $this->postJson(URL::signedRoute('sessions.participants.heartbeat', ['meeting' => $meeting]), [
+            'peer_id' => $otherGuest['peer_id'],
+            'token' => $otherGuest['token'],
+        ])->assertOk()->json();
+
+        $names = collect($roster['participants'])->pluck('display_name')->sort()->values()->all();
+        $this->assertSame(['Charles', 'Rayyy'], $names);
+        $this->assertSame(1, collect($roster['participants'])->where('display_name', 'Rayyy')->count());
+        $this->assertSame($returningGuest['peer_id'], collect($roster['participants'])->firstWhere('display_name', 'Rayyy')['peer_id']);
     }
 
     /**

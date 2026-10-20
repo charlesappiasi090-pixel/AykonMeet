@@ -106,7 +106,7 @@
             <div class="rm-empty-icon">⌂</div>
             <strong>No rooms added yet.</strong>
             <span>Add your first room to make it available when scheduling meetings.</span>
-            <button class="rm-btn rm-btn-gold" type="button" style="margin:0 auto" onclick="document.getElementById('add-room-dialog').showModal()">+ Add room <span>→</span></button>
+            <button class="rm-btn rm-btn-gold" type="button" style="margin:0 auto" onclick="document.getElementById('add-room-dialog').showModal()">+ Add room</button>
         </div>
     @endforelse
 </div>

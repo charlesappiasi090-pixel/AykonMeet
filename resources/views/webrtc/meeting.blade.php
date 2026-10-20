@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
     <title>AykonMeet - Online Session</title>
 
     <style>
@@ -29,7 +31,7 @@
         }
 
         video {
-            width: 450px;
+            width: 100%;
             max-width: 100%;
             background: black;
             border-radius: 8px;
@@ -43,6 +45,13 @@
             cursor: pointer;
             background: #1e3557;
             color: white;
+            min-height: 44px;
+        }
+        @media (max-width: 640px) {
+            body { padding: 16px; }
+            h1 { font-size: 26px; }
+            .video-box { width: 100%; }
+            button { width: 100%; }
         }
     </style>
 </head>

@@ -34,7 +34,7 @@
 .ud-pill.pending{background:#f1f4f8;color:#64748b}
 .ud-open{font:600 12px "DM Sans",sans-serif;color:#112b49;text-decoration:none;border-bottom:2px solid #f7c948;padding-bottom:1px}
 .ud-open:hover{color:#b18800}
-@media(max-width:640px){.ud-table th:nth-child(3),.ud-table td:nth-child(3){display:none}.ud-hero{padding:26px 22px}.ud-item{flex-direction:column}}
+@media(max-width:640px){.ud-hero{padding:22px 16px}.ud-hero h1{font-size:26px;overflow-wrap:anywhere}.ud-item{flex-direction:column;align-items:flex-start}.ud-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.ud-table{min-width:520px}.ud-section-head{align-items:flex-start;flex-direction:column}}
 </style>
 
 <div class="ud-wrap">
@@ -77,6 +77,7 @@
         @if($invitations->isEmpty())
             <p class="ud-empty">You have no meeting invitations yet.</p>
         @else
+            <div class="ud-table-wrap">
             <table class="ud-table">
                 <thead>
                     <tr><th>Meeting</th><th>Organizer</th><th>When</th><th>Status</th><th></th></tr>
@@ -104,6 +105,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         @endif
     </section>
 </div>

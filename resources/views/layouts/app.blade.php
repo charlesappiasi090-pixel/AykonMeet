@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{{ $title ?? "Aykon Meet" }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,8 +32,9 @@ dialog.meeting-dialog{position:fixed!important;inset:0;margin:auto;height:fit-co
 .sb-avatar{width:36px;height:36px;background:#f7c948;color:#112b49;display:grid;place-items:center;border-radius:50%;font:700 14px "DM Sans",sans-serif;flex:0 0 36px}
 .sb-user-info{min-width:0;flex:1}.sb-user-info strong{display:block;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sb-user-info small{display:block;color:#8c9cb5;font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-logout{width:100%;padding:10px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#c8d3e0;font:600 12px "DM Sans",sans-serif;border-radius:4px;cursor:pointer}.sb-logout:hover{background:rgba(255,255,255,.06);color:#fff}
-.sb-toggle{display:none;position:fixed;top:16px;left:16px;z-index:60;width:42px;height:42px;background:#112b49;color:#f7c948;border:0;border-radius:4px;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-@media(max-width:960px){.sidebar-fb{transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.2)}.sidebar-fb.open{transform:translateX(0)}.sb-toggle{display:grid;place-items:center}body.authed{padding-left:0!important}}
+.sb-toggle{display:none;position:fixed;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));z-index:60;width:44px;height:44px;background:#112b49;color:#f7c948;border:0;border-radius:4px;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sb-backdrop{display:none}
+@media(max-width:960px){.sidebar-fb{transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.2);width:min(86vw,300px)}.sidebar-fb.open{transform:translateX(0)}.sb-toggle{display:grid;place-items:center}body.authed{padding-left:0!important}body.nav-open{overflow:hidden}.sb-backdrop.on{display:block;position:fixed;inset:0;z-index:45;background:rgba(11,31,56,.55)}}
 @media(min-width:961px){body.authed .page-shell{margin-left:0;max-width:none!important;padding:40px!important}}
 body.authed{margin:0!important}
 </style>
@@ -78,7 +79,8 @@ else{$act=($item["route"]??false)&&$cr===$item["route"];}
 <form method="post" action="{{ route("logout") }}" style="margin:0">@csrf<button type="submit" class="sb-logout">Logout</button></form>
 </div>
 </aside>
-<button type="button" class="sb-toggle" id="sidebar-toggle">☰</button>
+<div class="sb-backdrop" id="sidebar-backdrop" hidden></div>
+<button type="button" class="sb-toggle" id="sidebar-toggle" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">☰</button>
 @else
 <header class="topbar"><a class="brand" href="{{ route("landing") }}"><span class="brand-mark">A</span><span>Aykon<span class="brand-accent">Meet</span></span></a>
 @if(auth()->check())
@@ -100,7 +102,23 @@ else{$act=($item["route"]??false)&&$cr===$item["route"];}
 </main>
 <footer class="footer">AykonMeet <span>•</span> Make every minute count.</footer>
 <script src="{{ asset('js/feedback.js') }}"></script>
+<link rel="stylesheet" href="{{ asset('css/mobile.css') }}">
 <script>
-(function(){var t=document.getElementById("sidebar-toggle"),s=document.getElementById("sidebar");if(t&&s){t.addEventListener("click",function(){s.classList.toggle("open")});document.addEventListener("click",function(e){if(window.innerWidth<=960&&s.classList.contains("open")&&!s.contains(e.target)&&!t.contains(e.target))s.classList.remove("open")})}})();
+(function(){
+var t=document.getElementById("sidebar-toggle"),s=document.getElementById("sidebar"),b=document.getElementById("sidebar-backdrop");
+if(!t||!s)return;
+function setOpen(open){
+s.classList.toggle("open",open);
+if(b){b.classList.toggle("on",open);b.hidden=!open}
+document.body.classList.toggle("nav-open",open);
+t.setAttribute("aria-expanded",open?"true":"false");
+t.setAttribute("aria-label",open?"Close menu":"Open menu");
+t.textContent=open?"✕":"☰";
+}
+t.addEventListener("click",function(){setOpen(!s.classList.contains("open"))});
+if(b)b.addEventListener("click",function(){setOpen(false)});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")setOpen(false)});
+s.querySelectorAll("a").forEach(function(a){a.addEventListener("click",function(){if(window.innerWidth<=960)setOpen(false)})});
+})();
 </script>
 </body></html>
